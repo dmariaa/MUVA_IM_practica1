@@ -1,34 +1,6 @@
-from enum import Enum
-
 import numpy as np
 import cv2.cv2 as cv2
 import matplotlib.pyplot as plt
-
-
-class noise_types(Enum):
-    RICIAN_NOISE = 1
-    GAUSSIAN_NOISE = 2
-
-
-def add_noise(image: np.ndarray, noise_type: noise_types, **kwargs) -> np.ndarray:
-    return_image = image.copy()
-
-    if noise_type == noise_types.RICIAN_NOISE:
-        intensity = kwargs.get('intensity', 0.2)
-
-        v = 1
-        s = 1
-        N = image.size
-
-        noise = np.random.normal(scale=s, size=(N, 2)) + [[v, 0]]
-        noise = np.linalg.norm(noise, axis=1)
-
-        mean_noise = np.mean(noise)
-        mean_image = np.mean(image)
-        factor = intensity * mean_image / mean_noise
-        return_image += (factor * noise).reshape(image.shape)
-
-    return return_image
 
 
 def dif_aniso(im: np.ndarray, niter: int, k: float, l: float, option: int) -> np.ndarray:
@@ -66,13 +38,15 @@ def dif_aniso(im: np.ndarray, niter: int, k: float, l: float, option: int) -> np
 
 
 if __name__ == "__main__":
+    from noise import add_noise, NoiseTypes
+
     image = cv2.imread("materiales/T1.png", cv2.COLOR_BGR2GRAY)
     image = image.astype(np.float64)
     plt.imshow(image, cmap='gray')
     plt.title("original")
     plt.show()
 
-    noise_image = add_noise(image=image, noise_type=noise_types.RICIAN_NOISE, intensity=0.3)
+    noise_image = add_noise(image=image, noise_type=NoiseTypes.RICIAN_NOISE, intensity=0.3)
     plt.imshow(noise_image, cmap='gray')
     plt.title("ruidosa")
     plt.show()

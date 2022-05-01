@@ -106,6 +106,7 @@ def dif_aniso_mc(im1: np.ndarray, im2: np.ndarray, niter: int, k: float, l: floa
 
     return imdif1, imdif2
 
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from noise import add_noise, NoiseTypes

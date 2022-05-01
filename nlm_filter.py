@@ -2,30 +2,70 @@ import numpy as np
 import scipy.ndimage.filters as filters
 
 
-def nlm(image, ws, h, p):
-    w = ws // 2
-    nlm_filter = 0
-    z = 0
+def slides(data: np.ndarray, ws: int = 3, p: int = 1) -> np.ndarray:
+    """
+    Generates windowed view of input array, for a window size and a padding
+    :param data: input array
+    :param ws: window size
+    :param p: padding
+    :return: windowed view of input array
+    """
+    rs = (data.shape[0] - ws + 2 * p) + 1
+    cs = (data.shape[1] - ws + 2 * p) + 1
 
-    image0 = image[p - w:p + 1 + w, p - w:p + 1 + w]
+    data = np.pad(data, ((p, p), (p, p)))
+    shape = (rs, cs, ws, ws)
+    strides = (data.strides[0], data.strides[1], data.strides[0], data.strides[1])
+    s = np.lib.stride_tricks.as_strided(data, shape, strides)
 
-    for i in range(-w, w + 1):
-        for j in range(-w, w + 1):
-            # región definida
-            ngbr_pixel = image[p + i - w:p + 1 + i + w, p + j - w:p + 1 + j + w]
-            d_euc = np.sqrt((image0 - ngbr_pixel) ** 2)  # distancia euclídea
-            z += np.exp(-d_euc / (h ** 2))
+    return s
 
-    # Cálculo de Z
-    Z = np.sum(z)
 
-    # Ecuación final del filtro NLM
-    nlm_filter = (1 / Z) * z
-    nlm_filter = np.ones(nlm_filter.shape, np.uint8)
-    nlm_filter = nlm_filter * nlm_filter
-    nlm_filter_final = nlm_filter / Z
+def nlm(im: np.ndarray, ws: int, h: float):
+    padding = ws // 2
+    slides_im = slides(im, ws, padding)
+    result = np.zeros(im.shape)
 
-    # Convolución entre la imagen y la expresión final del filtro NLM
-    image_filtered = filters.convolve(image, nlm_filter_final, mode='reflect')
+    for i in np.arange(im.shape[0]):
+        for j in np.arange(im.shape[1]):
 
-    return image_filtered  # Devuelve la imagen filtrada
+            current = slides_im[i, j]
+            distances = np.exp(-(np.sqrt(np.sum((slides_im - current) ** 2, axis=(2, 3))) / (h ** 2)))
+            z = np.sum(distances)
+            w = distances / z
+            result[i, j] = np.sum(w * im)
+
+    return result
+
+
+if __name__ == "__main__":
+    import time
+    import matplotlib.pyplot as plt
+    import cv2.cv2 as cv2
+    from noise import add_noise, NoiseTypes
+
+
+    def read_image(file):
+        image = cv2.imread(file, cv2.COLOR_BGR2GRAY)
+        image = image.astype(np.float64)
+        image = image / 255.
+        return image
+
+    image = read_image("materiales/T1.png")
+    noise_image = add_noise(image=image, noise_type=NoiseTypes.RICIAN_NOISE, intensity=0.1)
+    start = time.time()
+    denoised_image = nlm(im=noise_image, ws=3, h=0.5)
+    print(f"Elapsed: {time.time() - start:.4f} seconds")
+
+    plt.interactive(True)
+    plt.imshow(image, cmap='gray')
+    plt.title("original")
+    plt.show()
+
+    plt.imshow(noise_image, cmap='gray')
+    plt.title("ruidosa")
+    plt.show()
+
+    plt.imshow(denoised_image, cmap='gray')
+    plt.title("denoised")
+    plt.show()

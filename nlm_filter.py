@@ -28,11 +28,16 @@ def nlm(im: np.ndarray, ws: int, h: float):
 
     for i in np.arange(im.shape[0]):
         for j in np.arange(im.shape[1]):
-
+            # calculations for current pixel
             current = slides_im[i, j]
             distances = np.exp(-(np.sqrt(np.sum((slides_im - current) ** 2, axis=(2, 3))) / (h ** 2)))
             z = np.sum(distances)
             w = distances / z
+
+            # fix current pixel weight
+            w[i, j] = 0
+            w[i, j] = np.max(w)
+
             result[i, j] = np.sum(w * im)
 
     return result
